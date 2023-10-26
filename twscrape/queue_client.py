@@ -197,8 +197,8 @@ class QueueClient:
                 # already handled
                 continue
             except (DependencyError):
-                logger.error(f"Dependency error, returnning: {url}")
-                return
+                logger.error(f"Dependency error, while returning: {url}")
+                return rep
             except (httpx.ReadTimeout, httpx.ProxyError):
                 # http transport failed, just retry
                 continue

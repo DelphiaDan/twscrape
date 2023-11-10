@@ -163,6 +163,7 @@ class Tweet(JSONTrait):
     likeCount: int
     quoteCount: int
     conversationId: int
+    bookmarkCount: int
     hashtags: list[str]
     cashtags: list[str]
     mentionedUsers: list[UserRef]
@@ -208,6 +209,7 @@ class Tweet(JSONTrait):
             likeCount=obj["favorite_count"],
             quoteCount=obj["quote_count"],
             conversationId=int(obj["conversation_id_str"]),
+            bookmarkCount=int(obj["bookmark_count"]),
             hashtags=[x["text"] for x in get_or(obj, "entities.hashtags", [])],
             cashtags=[x["text"] for x in get_or(obj, "entities.symbols", [])],
             mentionedUsers=[UserRef.parse(x) for x in get_or(obj, "entities.user_mentions", [])],

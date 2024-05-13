@@ -164,11 +164,11 @@ class Tweet(JSONTrait):
     quoteCount: int
     conversationId: int
     bookmarkCount: int
-    possibly_sensitive: bool | None = None
     hashtags: list[str]
     cashtags: list[str]
     mentionedUsers: list[UserRef]
     links: list[TextLink]
+    possibly_sensitive: bool | None = None
     viewCount: int | None = None
     retweetedTweet: Optional["Tweet"] = None
     quotedTweet: Optional["Tweet"] = None

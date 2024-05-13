@@ -109,6 +109,7 @@ class User(JSONTrait):
     listedCount: int
     mediaCount: int
     location: str
+    pinnedTweetIds: list[str]
     profileImageUrl: str
     profileBannerUrl: str | None = None
     protected: bool | None = None
@@ -139,6 +140,7 @@ class User(JSONTrait):
             listedCount=obj["listed_count"],
             mediaCount=obj["media_count"],
             location=obj["location"],
+            pinnedTweetIds=obj["pinned_tweet_ids_str"],
             profileImageUrl=obj["profile_image_url_https"],
             profileBannerUrl=obj.get("profile_banner_url"),
             verified=obj.get("verified"),

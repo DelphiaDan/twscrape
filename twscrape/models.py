@@ -106,11 +106,11 @@ class User(JSONTrait):
     friendsCount: int
     statusesCount: int
     favouritesCount: int
-    listedCount: int
     mediaCount: int
     location: str
     pinnedTweetIds: list[str]
     profileImageUrl: str
+    listedCount: int | None = None
     profileBannerUrl: str | None = None
     protected: bool | None = None
     verified: bool | None = None
@@ -137,7 +137,7 @@ class User(JSONTrait):
             friendsCount=obj["friends_count"],
             statusesCount=obj["statuses_count"],
             favouritesCount=obj["favourites_count"],
-            listedCount=obj["listed_count"],
+            listedCount=obj.get("listed_count"),
             mediaCount=obj["media_count"],
             location=obj["location"],
             pinnedTweetIds=obj["pinned_tweet_ids_str"],

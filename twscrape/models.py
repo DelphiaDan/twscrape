@@ -394,7 +394,7 @@ def _first(obj: dict, paths: list[str]):
 
 def _get_views(obj: dict, rt_obj: dict):
     for x in [obj, rt_obj]:
-        for y in ["ext_views.count", "views.count"]:
+        for y in ["ext_views.count", "views.count", "view_count_info.count"]:
             k = int_or(x, y)
             if k is not None:
                 return k

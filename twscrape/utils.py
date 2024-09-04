@@ -1,14 +1,25 @@
 import base64
 import json
+import os
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Callable, TypeVar
 
-from httpx import HTTPStatusError, Response
-
-from .logger import logger
-
 T = TypeVar("T")
+
+
+class utc:
+    @staticmethod
+    def now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    @staticmethod
+    def from_iso(iso: str) -> datetime:
+        return datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
+
+    @staticmethod
+    def ts() -> int:
+        return int(utc.now().timestamp())
 
 
 async def gather(gen: AsyncGenerator[T, None]) -> list[T]:
@@ -16,14 +27,6 @@ async def gather(gen: AsyncGenerator[T, None]) -> list[T]:
     async for x in gen:
         items.append(x)
     return items
-
-
-def raise_for_status(rep: Response, label: str):
-    try:
-        rep.raise_for_status()
-    except HTTPStatusError as e:
-        logger.warning(f"{label} - {rep.status_code} - {rep.text}")
-        raise e
 
 
 def encode_params(obj: dict):
@@ -147,14 +150,6 @@ def to_old_rep(obj: dict) -> dict[str, dict]:
     return {"tweets": {**tw1, **tw2}, "users": users}
 
 
-def utc_ts() -> int:
-    return int(datetime.utcnow().replace(tzinfo=timezone.utc).timestamp())
-
-
-def from_utciso(iso: str) -> datetime:
-    return datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
-
-
 def print_table(rows: list[dict], hr_after=False):
     if not rows:
         return
@@ -212,3 +207,10 @@ def parse_cookies(val: str) -> dict[str, str]:
         pass
 
     raise ValueError(f"Invalid cookie value: {val}")
+
+
+def get_env_bool(key: str, default_val: bool = False) -> bool:
+    val = os.getenv(key)
+    if val is None:
+        return default_val
+    return val.lower() in ("1", "true", "yes")

@@ -23,7 +23,7 @@
         "is_blue_verified": true,
         "profile_image_shape": "Square",
         "legacy": {
-          "can_dm": false,
+          "can_dm": true,
           "can_media_tag": true,
           "created_at": "Sat Dec 14 04:35:55 +0000 2013",
           "default_profile": false,
@@ -36,9 +36,9 @@
             "url": {
               "urls": [
                 {
-                  "display_url": "developer.twitter.com",
-                  "expanded_url": "https://developer.twitter.com/",
-                  "url": "https://t.co/RUXWsqdGk8",
+                  "display_url": "developer.x.com",
+                  "expanded_url": "https://developer.x.com/",
+                  "url": "https://t.co/O13IfbuPqq",
                   "indices": [
                     0,
                     23
@@ -48,27 +48,27 @@
             }
           },
           "fast_followers_count": 0,
-          "favourites_count": 2078,
-          "followers_count": 590993,
-          "friends_count": 1934,
+          "favourites_count": 2148,
+          "followers_count": 646174,
+          "friends_count": 1777,
           "has_custom_timelines": true,
           "is_translator": false,
-          "listed_count": 2491,
+          "listed_count": 2684,
           "location": "127.0.0.1",
-          "media_count": 815,
+          "media_count": 820,
           "name": "Developers",
-          "normal_followers_count": 590993,
+          "normal_followers_count": 646174,
           "pinned_tweet_ids_str": [
-            "1661790253886177280"
+            "1770153912013615285"
           ],
           "possibly_sensitive": false,
           "profile_banner_url": "https://pbs.twimg.com/profile_banners/2244994945/1690213128",
           "profile_image_url_https": "https://pbs.twimg.com/profile_images/1683501992314798080/xl1POYLw_normal.jpg",
           "profile_interstitial_type": "",
           "screen_name": "XDevelopers",
-          "statuses_count": 4053,
+          "statuses_count": 4089,
           "translator_type": "regular",
-          "url": "https://t.co/RUXWsqdGk8",
+          "url": "https://t.co/O13IfbuPqq",
           "verified": false,
           "verified_type": "Business",
           "want_retweets": false,
@@ -85,44 +85,16 @@
             }
           ]
         },
+        "tipjar_settings": {},
         "smart_blocked_by": false,
         "smart_blocking": false,
-        "legacy_extended_profile": {},
-        "is_profile_translatable": false,
-        "has_hidden_likes_on_profile": false,
-        "has_hidden_subscriptions_on_profile": false,
-        "verification_info": {
-          "reason": {
-            "description": {
-              "text": "This account is verified because it's an affiliate of @X on X. Learn more",
-              "entities": [
-                {
-                  "from_index": 54,
-                  "to_index": 56,
-                  "ref": {
-                    "url": "https://twitter.com/X",
-                    "url_type": "ExternalUrl"
-                  }
-                },
-                {
-                  "from_index": 63,
-                  "to_index": 73,
-                  "ref": {
-                    "url": "If a Blue Publisher charges readers for content, you’ll need to subscribe directly to their publication to read stories behind their paywall.s",
-                    "url_type": "ExternalUrl"
-                  }
-                }
-              ]
-            },
-            "verified_since_msec": "1395425700472"
-          }
-        },
+        "business_account": {},
         "highlights_info": {
           "can_highlight_tweets": true,
-          "highlighted_tweets": "0"
+          "highlighted_tweets": "1"
         },
-        "business_account": {},
-        "creator_subscriptions_count": 0
+        "creator_subscriptions_count": 0,
+        "has_hidden_subscriptions_on_profile": false
       }
     }
   }

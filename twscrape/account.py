@@ -1,13 +1,15 @@
 import json
+import os
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
 from httpx import AsyncClient, AsyncHTTPTransport
 
-from .constants import TOKEN
 from .models import JSONTrait
-from .utils import from_utciso
+from .utils import utc
+
+TOKEN = "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
 
 
 @dataclass
@@ -22,6 +24,7 @@ class Account(JSONTrait):
     stats: dict[str, int] = field(default_factory=dict)  # queue: requests
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] = field(default_factory=dict)
+    mfa_code: str | None = None
     proxy: str | None = None
     error_msg: str | None = None
     last_used: datetime | None = None
@@ -30,12 +33,12 @@ class Account(JSONTrait):
     @staticmethod
     def from_rs(rs: sqlite3.Row):
         doc = dict(rs)
-        doc["locks"] = {k: from_utciso(v) for k, v in json.loads(doc["locks"]).items()}
+        doc["locks"] = {k: utc.from_iso(v) for k, v in json.loads(doc["locks"]).items()}
         doc["stats"] = {k: v for k, v in json.loads(doc["stats"]).items() if isinstance(v, int)}
         doc["headers"] = json.loads(doc["headers"])
         doc["cookies"] = json.loads(doc["cookies"])
         doc["active"] = bool(doc["active"])
-        doc["last_used"] = from_utciso(doc["last_used"]) if doc["last_used"] else None
+        doc["last_used"] = utc.from_iso(doc["last_used"]) if doc["last_used"] else None
         return Account(**doc)
 
     def to_rs(self):
@@ -47,9 +50,13 @@ class Account(JSONTrait):
         rs["last_used"] = rs["last_used"].isoformat() if rs["last_used"] else None
         return rs
 
-    def make_client(self) -> AsyncClient:
+    def make_client(self, proxy: str | None = None) -> AsyncClient:
+        proxies = [proxy, os.getenv("TWS_PROXY"), self.proxy]
+        proxies = [x for x in proxies if x is not None]
+        proxy = proxies[0] if proxies else None
+
         transport = AsyncHTTPTransport(retries=2)
-        client = AsyncClient(proxies=self.proxy, follow_redirects=True, transport=transport)
+        client = AsyncClient(proxy=proxy, follow_redirects=True, transport=transport)
 
         # saved from previous usage
         client.cookies.update(self.cookies)

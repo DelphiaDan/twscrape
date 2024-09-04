@@ -4,15 +4,16 @@ import os
 import random
 import re
 import string
+import sys
 import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Generator, Optional
+from typing import Generator, Optional, Union
 
 import httpx
 
 from .logger import logger
-from .utils import find_item, get_or, int_or, to_old_rep
+from .utils import find_item, get_or, int_or, to_old_rep, utc
 
 
 @dataclass
@@ -84,13 +85,19 @@ class TextLink(JSONTrait):
 @dataclass
 class UserRef(JSONTrait):
     id: int
+    id_str: str
     username: str
     displayname: str
     _type: str = "snscrape.modules.twitter.UserRef"
 
     @staticmethod
     def parse(obj: dict):
-        return UserRef(id=int(obj["id_str"]), username=obj["screen_name"], displayname=obj["name"])
+        return UserRef(
+            id=int(obj["id_str"]),
+            id_str=obj["id_str"],
+            username=obj["screen_name"],
+            displayname=obj["name"],
+        )
 
 
 @dataclass
@@ -117,6 +124,7 @@ class User(JSONTrait):
     blue: bool | None = None
     blueType: str | None = None
     descriptionLinks: list[TextLink] = field(default_factory=list)
+    pinnedIds: list[int] = field(default_factory=list)
     _type: str = "snscrape.modules.twitter.User"
 
     # todo:
@@ -128,7 +136,7 @@ class User(JSONTrait):
         return User(
             id=int(obj["id_str"]),
             id_str=obj["id_str"],
-            url=f'https://twitter.com/{obj["screen_name"]}',
+            url=f'https://x.com/{obj["screen_name"]}',
             username=obj["screen_name"],
             displayname=obj["name"],
             rawDescription=obj["description"],
@@ -148,6 +156,7 @@ class User(JSONTrait):
             blueType=obj.get("verified_type"),
             protected=obj.get("protected"),
             descriptionLinks=_parse_links(obj, ["entities.description.urls", "entities.url.urls"]),
+            pinnedIds=[int(x) for x in obj.get("pinned_tweet_ids_str", [])],
         )
 
 
@@ -164,8 +173,10 @@ class Tweet(JSONTrait):
     retweetCount: int
     likeCount: int
     quoteCount: int
+    bookmarkedCount: int
     conversationId: int
     bookmarkCount: int
+    conversationIdStr: str
     hashtags: list[str]
     cashtags: list[str]
     mentionedUsers: list[UserRef]
@@ -177,32 +188,43 @@ class Tweet(JSONTrait):
     place: Optional[Place] = None
     coordinates: Optional[Coordinates] = None
     inReplyToTweetId: int | None = None
+    inReplyToTweetIdStr: str | None = None
     inReplyToUser: UserRef | None = None
     source: str | None = None
     sourceUrl: str | None = None
     sourceLabel: str | None = None
     media: Optional["Media"] = None
+    card: Union[None, "SummaryCard", "PollCard", "BroadcastCard", "AudiospaceCard"] = None
     _type: str = "snscrape.modules.twitter.Tweet"
 
     # todo:
     # renderedContent: str
-    # card: typing.Optional["Card"] = None
-    # vibe: typing.Optional["Vibe"] = None
+    # vibe: Optional["Vibe"] = None
 
     @staticmethod
     def parse(obj: dict, res: dict):
         tw_usr = User.parse(res["users"][obj["user_id_str"]])
 
-        rt_id = _first(obj, ["retweeted_status_id_str", "retweeted_status_result.result.rest_id"])
-        rt_obj = get_or(res, f"tweets.{rt_id}")
+        rt_id_path = [
+            "retweeted_status_id_str",
+            "retweeted_status_result.result.rest_id",
+            "retweeted_status_result.result.tweet.rest_id",
+        ]
 
-        qt_id = _first(obj, ["quoted_status_id_str", "quoted_status_result.result.rest_id"])
-        qt_obj = get_or(res, f"tweets.{qt_id}")
+        qt_id_path = [
+            "quoted_status_id_str",
+            "quoted_status_result.result.rest_id",
+            "quoted_status_result.result.tweet.rest_id",
+        ]
 
+        rt_obj = get_or(res, f"tweets.{_first(obj, rt_id_path)}")
+        qt_obj = get_or(res, f"tweets.{_first(obj, qt_id_path)}")
+
+        url = f'https://x.com/{tw_usr.username}/status/{obj["id_str"]}'
         doc = Tweet(
             id=int(obj["id_str"]),
             id_str=obj["id_str"],
-            url=f'https://twitter.com/{tw_usr.username}/status/{obj["id_str"]}',
+            url=url,
             date=email.utils.parsedate_to_datetime(obj["created_at"]),
             user=tw_usr,
             lang=obj["lang"],
@@ -211,9 +233,11 @@ class Tweet(JSONTrait):
             retweetCount=obj["retweet_count"],
             likeCount=obj["favorite_count"],
             quoteCount=obj["quote_count"],
+            bookmarkedCount=get_or(obj, "bookmark_count", 0),
             conversationId=int(obj["conversation_id_str"]),
             bookmarkCount=int(obj["bookmark_count"]),
             possibly_sensitive=obj.get("possibly_sensitive"),
+            conversationIdStr=obj["conversation_id_str"],
             hashtags=[x["text"] for x in get_or(obj, "entities.hashtags", [])],
             cashtags=[x["text"] for x in get_or(obj, "entities.symbols", [])],
             mentionedUsers=[UserRef.parse(x) for x in get_or(obj, "entities.user_mentions", [])],
@@ -226,22 +250,20 @@ class Tweet(JSONTrait):
             place=Place.parse(obj["place"]) if obj.get("place") else None,
             coordinates=Coordinates.parse(obj),
             inReplyToTweetId=int_or(obj, "in_reply_to_status_id_str"),
+            inReplyToTweetIdStr=get_or(obj, "in_reply_to_status_id_str"),
             inReplyToUser=_get_reply_user(obj, res),
             source=obj.get("source", None),
             sourceUrl=_get_source_url(obj),
             sourceLabel=_get_source_label(obj),
             media=Media.parse(obj),
+            card=_parse_card(obj, url),
         )
 
         # issue #42 – restore full rt text
         rt = doc.retweetedTweet
         if rt is not None and rt.user is not None and doc.rawContent.endswith("…"):
-            # prefix = f"RT @{rt.user.username}: "
-            # if login changed, old login can be cached in rawContent, so use less strict check
-            prefix = "RT @"
-
-            rt_msg = f"{prefix}{rt.rawContent}"
-            if doc.rawContent != rt_msg and doc.rawContent.startswith(prefix):
+            rt_msg = f"RT @{rt.user.username}: {rt.rawContent}"
+            if doc.rawContent != rt_msg:
                 doc.rawContent = rt_msg
 
         return doc
@@ -339,6 +361,196 @@ class Media(JSONTrait):
         return Media(photos=photos, videos=videos, animated=animated)
 
 
+@dataclass
+class Card(JSONTrait):
+    pass
+
+
+@dataclass
+class SummaryCard(Card):
+    title: str
+    description: str
+    vanityUrl: str
+    url: str
+    photo: MediaPhoto | None = None
+    video: MediaVideo | None = None
+    _type: str = "summary"
+
+
+@dataclass
+class PollOption(JSONTrait):
+    label: str
+    votesCount: int
+
+
+@dataclass
+class PollCard(Card):
+    options: list[PollOption]
+    finished: bool
+    _type: str = "poll"
+
+
+@dataclass
+class BroadcastCard(Card):
+    title: str
+    url: str
+    photo: MediaPhoto | None = None
+    _type: str = "broadcast"
+
+
+@dataclass
+class AudiospaceCard(Card):
+    url: str
+    _type: str = "audiospace"
+
+
+def _parse_card_get_bool(values: list[dict], key: str):
+    for x in values:
+        if x["key"] == key:
+            return x["value"]["boolean_value"]
+    return False
+
+
+def _parse_card_get_str(values: list[dict], key: str, defaultVal=None) -> str | None:
+    for x in values:
+        if x["key"] == key:
+            return x["value"]["string_value"]
+    return defaultVal
+
+
+def _parse_card_extract_str(values: list[dict], key: str):
+    pretenders = [x["value"]["string_value"] for x in values if x["key"] == key]
+    new_values = [x for x in values if x["key"] != key]
+    return pretenders[0] if pretenders else "", new_values
+
+
+def _parse_card_extract_title(values: list[dict]):
+    new_values, pretenders = [], []
+    # title is trimmed to 70 chars, so try to find the longest text in alt_text
+    for x in values:
+        k = x["key"]
+        if k == "title" or k.endswith("_alt_text"):
+            pretenders.append(x["value"]["string_value"])
+        else:
+            new_values.append(x)
+
+    pretenders = sorted(pretenders, key=lambda x: len(x), reverse=True)
+    return pretenders[0] if pretenders else "", new_values
+
+
+def _parse_card_extract_largest_photo(values: list[dict]):
+    photos = [x for x in values if x["value"]["type"] == "IMAGE"]
+    photos = sorted(photos, key=lambda x: x["value"]["image_value"]["height"], reverse=True)
+    values = [x for x in values if x["value"]["type"] != "IMAGE"]
+    if photos:
+        return MediaPhoto(url=photos[0]["value"]["image_value"]["url"]), values
+    else:
+        return None, values
+
+
+def _parse_card_prepare_values(obj: dict):
+    values = get_or(obj, "card.legacy.binding_values", [])
+    # values = sorted(values, key=lambda x: x["key"])
+    # values = [x for x in values if x["key"] not in {"domain", "creator", "site"}]
+    values = [x for x in values if x["value"]["type"] != "IMAGE_COLOR"]
+    return values
+
+
+def _parse_card(obj: dict, url: str):
+    name = get_or(obj, "card.legacy.name", None)
+    if not name:
+        return None
+
+    if name in {"summary", "summary_large_image", "player"}:
+        val = _parse_card_prepare_values(obj)
+        title, val = _parse_card_extract_title(val)
+        description, val = _parse_card_extract_str(val, "description")
+        vanity_url, val = _parse_card_extract_str(val, "vanity_url")
+        url, val = _parse_card_extract_str(val, "card_url")
+        photo, val = _parse_card_extract_largest_photo(val)
+
+        return SummaryCard(
+            title=title,
+            description=description,
+            vanityUrl=vanity_url,
+            url=url,
+            photo=photo,
+        )
+
+    if name == "unified_card":
+        val = _parse_card_prepare_values(obj)
+        val = [x for x in val if x["key"] == "unified_card"][0]["value"]["string_value"]
+        val = json.loads(val)
+
+        co = get_or(val, "component_objects", {})
+        do = get_or(val, "destination_objects", {})
+        me = list(get_or(val, "media_entities", {}).values())
+        if len(me) > 1:
+            logger.debug(f"[Card] Multiple media entities: {json.dumps(me, indent=2)}")
+
+        me = me[0] if me else {}
+
+        title = get_or(co, "details_1.data.title.content", "")
+        description = get_or(co, "details_1.data.subtitle.content", "")
+        vanity_url = get_or(do, "browser_with_docked_media_1.data.url_data.vanity", "")
+        url = get_or(do, "browser_with_docked_media_1.data.url_data.url", "")
+        video = MediaVideo.parse(me) if me and me["type"] == "video" else None
+        photo = MediaPhoto.parse(me) if me and me["type"] == "photo" else None
+
+        return SummaryCard(
+            title=title,
+            description=description,
+            vanityUrl=vanity_url,
+            url=url,
+            photo=photo,
+            video=video,
+        )
+
+    if re.match(r"poll\d+choice_text_only", name):
+        val = _parse_card_prepare_values(obj)
+
+        options = []
+        for x in range(20):
+            label = _parse_card_get_str(val, f"choice{x+1}_label")
+            votes = _parse_card_get_str(val, f"choice{x+1}_count")
+            if label is None or votes is None:
+                break
+
+            options.append(PollOption(label=label, votesCount=int(votes)))
+
+        finished = _parse_card_get_bool(val, "counts_are_final")
+        # duration_minutes = int(_parse_card_get_str(val, "duration_minutes") or "0")
+        # end_datetime_utc = _parse_card_get_str(val, "end_datetime_utc")
+        # print(json.dumps(val, indent=2))
+        return PollCard(options=options, finished=finished)
+
+    if name == "745291183405076480:broadcast":
+        val = _parse_card_prepare_values(obj)
+        card_url = _parse_card_get_str(val, "broadcast_url")
+        card_title = _parse_card_get_str(val, "broadcast_title")
+        photo, _ = _parse_card_extract_largest_photo(val)
+        if card_url is None or card_title is None:
+            return None
+
+        return BroadcastCard(title=card_title, url=card_url, photo=photo)
+
+    if name == "3691233323:audiospace":
+        # no more data in this object, possible extra api call needed to get card info
+        val = _parse_card_prepare_values(obj)
+        card_url = _parse_card_get_str(val, "card_url")
+        if card_url is None:
+            return None
+
+        # print(json.dumps(val, indent=2))
+        return AudiospaceCard(url=card_url)
+
+    logger.warning(f"Unknown card type '{name}' on {url}")
+    if "PYTEST_CURRENT_TEST" in os.environ:  # help debugging tests
+        print(f"Unknown card type '{name}' on {url}", file=sys.stderr)
+        # print(json.dumps(obj["card"]["legacy"], indent=2))
+    return None
+
+
 # internal helpers
 
 
@@ -403,7 +615,7 @@ def _get_views(obj: dict, rt_obj: dict):
 
 def _write_dump(kind: str, e: Exception, x: dict, obj: dict):
     uniq = "".join(random.choice(string.ascii_lowercase) for _ in range(5))
-    time = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+    time = utc.now().strftime("%Y-%m-%d_%H-%M-%S")
     dumpfile = f"/tmp/twscrape/twscrape_parse_error_{time}_{uniq}.txt"
     os.makedirs(os.path.dirname(dumpfile), exist_ok=True)
 

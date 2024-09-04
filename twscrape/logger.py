@@ -3,7 +3,7 @@ from typing import Literal
 
 from loguru import logger
 
-_LEVELS = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_LEVELS = Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 _LOG_LEVEL: _LEVELS = "INFO"
 
 
@@ -12,5 +12,9 @@ def set_log_level(level: _LEVELS):
     _LOG_LEVEL = level
 
 
+def _filter(r):
+    return r["level"].no >= logger.level(_LOG_LEVEL).no
+
+
 logger.remove()
-logger.add(sys.stderr, filter=lambda r: r["level"].no >= logger.level(_LOG_LEVEL).no)
+logger.add(sys.stderr, filter=_filter)

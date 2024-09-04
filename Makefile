@@ -1,73 +1,77 @@
-.PHONY: all build
+check:
+	@make lint
+	@make test
 
-SQTEST = docker -l warning build -f sqlite.dockerfile
-
-all:
-	@echo "hi"
-
-install:
+deps:
 	@pip install -e .[dev]
 
 build:
 	@python -m build
 
-ci:
-	@make format
-	@make lint
-	@make test
-
-format:
-	@black .
-
 lint:
-	@ruff check twscrape
-	@ruff check tests
-
-lint-fix:
-	@ruff check --fix twscrape
-	@ruff check --fix tests
-
-pylint:
-	@pylint --errors-only twscrape
+	# https://docs.astral.sh/ruff/settings/#sorting-imports
+	@ruff check --select I --fix .
+	@ruff format .
+	@ruff check .
+	@pyright .
 
 test:
 	@pytest -s --cov=twscrape tests/
 
-show-cov:
+test-cov:
 	@pytest -s --cov=twscrape tests/
 	@coverage html
 	@open htmlcov/index.html
-
-act:
-	@act --container-architecture linux/amd64
 
 changelog:
 	@git pull origin --tags > /dev/null
 	@git log $(shell git describe --tags --abbrev=0 HEAD)^..HEAD --pretty=format:'- %s'
 
-test34:
+test-py:
+	$(eval name=twscrape_py$(v))
+	@docker -l warning build -f Dockerfile.python --build-arg VER=$(v) -t $(name) .
+	@docker run $(name)
+
+test-sq:
+	$(eval name=twscrape_sq$(v))
+	@docker -l warning build -f Dockerfile.sqlite --build-arg SQLY=$(y) --build-arg SQLV=$(v) -t $(name) .
+	@docker run $(name)
+
+test-py-matrix:
+	@make test-py v=3.10
+	@make test-py v=3.11
+	@make test-py v=3.12
+
+test-sq-matrix:
 	@# https://www.sqlite.org/chronology.html
-	@$(SQTEST) --build-arg SQLY=2018 --build-arg SQLV=3240000 -t twscrape_sq24 .
-	@$(SQTEST) --build-arg SQLY=2019 --build-arg SQLV=3270200 -t twscrape_sq27 .
-	@$(SQTEST) --build-arg SQLY=2019 --build-arg SQLV=3300100 -t twscrape_sq30 .
-	@$(SQTEST) --build-arg SQLY=2020 --build-arg SQLV=3330000 -t twscrape_sq33 .
-	@$(SQTEST) --build-arg SQLY=2021 --build-arg SQLV=3340100 -t twscrape_sq34 .
-	@$(SQTEST) --build-arg SQLY=2023 --build-arg SQLV=3430000 -t twscrape_sq43 .
-	@docker run twscrape_sq24
-	@docker run twscrape_sq27
-	@docker run twscrape_sq30
-	@docker run twscrape_sq33
-	@docker run twscrape_sq34
-	@docker run twscrape_sq43
+	@make test-sq y=2018 v=3240000
+	@make test-sq y=2019 v=3270200
+	@make test-sq y=2019 v=3300100
+	@make test-sq y=2020 v=3330000
+	@make test-sq y=2021 v=3340100
+	@make test-sq y=2023 v=3430000
+	@make test-sq y=2023 v=3440000
+	@make test-sq y=2024 v=3450300
 
 update-mocks:
-	twscrape user_by_id --raw 2244994945 | jq > ./tests/mocked-data/user_by_id_raw.json
-	twscrape user_by_login --raw xdevelopers | jq > ./tests/mocked-data/user_by_login_raw.json
-	twscrape followers --raw --limit 10 2244994945 | jq > ./tests/mocked-data/followers_raw.json
-	twscrape following --raw --limit 10  2244994945 | jq > ./tests/mocked-data/following_raw.json
-	twscrape tweet_details --raw 1649191520250245121 | jq > ./tests/mocked-data/tweet_details_raw.json
-	twscrape retweeters --raw --limit 10 1649191520250245121 | jq > ./tests/mocked-data/retweeters_raw.json
-	twscrape favoriters --raw --limit 10 1649191520250245121 | jq > ./tests/mocked-data/favoriters_raw.json
-	twscrape user_tweets --raw --limit 10 2244994945 | jq > ./tests/mocked-data/user_tweets_raw.json
-	twscrape user_tweets_and_replies --raw --limit 10 2244994945 | jq > ./tests/mocked-data/user_tweets_and_replies_raw.json
-	twscrape search --raw --limit 10 "elon musk lang:en" | jq > ./tests/mocked-data/search_raw.json
+	@rm -rf ./tests/mocked-data/raw_*.json
+	twscrape user_by_id --raw 2244994945 | jq > ./tests/mocked-data/raw_user_by_id.json
+	twscrape user_by_login --raw xdevelopers | jq > ./tests/mocked-data/raw_user_by_login.json
+	twscrape following --raw --limit 10  2244994945 | jq > ./tests/mocked-data/raw_following.json
+	twscrape followers --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_followers.json
+	twscrape verified_followers --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_verified_followers.json
+	twscrape subscriptions --raw --limit 10 44196397 | jq > ./tests/mocked-data/raw_subscriptions.json
+	twscrape tweet_details --raw 1649191520250245121 | jq > ./tests/mocked-data/raw_tweet_details.json
+	twscrape tweet_replies --limit 1 --raw 1649191520250245121 | jq > ./tests/mocked-data/raw_tweet_replies.json
+	twscrape retweeters --raw --limit 10 1649191520250245121 | jq > ./tests/mocked-data/raw_retweeters.json
+	twscrape user_tweets --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_user_tweets.json
+	twscrape user_tweets_and_replies --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_user_tweets_and_replies.json
+	twscrape user_media --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_user_media.json
+	twscrape search --raw --limit 10 "elon musk lang:en" | jq > ./tests/mocked-data/raw_search.json
+	twscrape list_timeline --raw --limit 10 1494877848087187461 | jq > ./tests/mocked-data/raw_list_timeline.json
+	@# twscrape favoriters --raw --limit 10 1649191520250245121 | jq > ./tests/mocked-data/raw_favoriters.json
+	@# twscrape liked_tweets --raw --limit 10 2244994945 | jq > ./tests/mocked-data/raw_likes.json
+
+x:
+	twscrape tweet_details --raw 1790441814857826439 | jq > ./tests/mocked-data/card_broadcast.json
+	twscrape tweet_details --raw 1789054061729173804 | jq > ./tests/mocked-data/card_audiospace.json

@@ -92,14 +92,11 @@ class UserRef(JSONTrait):
 
     @staticmethod
     def parse(obj: dict):
-        core_obj = obj.get("core", obj)
-        username = obj.get("screen_name") or core_obj.get("screen_name")
-        displayname = obj.get("name") or core_obj.get("name")
         return UserRef(
             id=int(obj["id_str"]),
             id_str=obj["id_str"],
-            username=username,
-            displayname=displayname,
+            username=obj["screen_name"],
+            displayname=obj["name"],
         )
 
 
@@ -136,18 +133,14 @@ class User(JSONTrait):
 
     @staticmethod
     def parse(obj: dict, res=None):
-        core_obj = obj.get("core", obj)
-        username = obj.get("screen_name") or core_obj.get("screen_name")
-        created_at = obj.get("created_at") or core_obj.get("created_at")
-        displayname = obj.get("name") or core_obj.get("name")
         return User(
             id=int(obj["id_str"]),
             id_str=obj["id_str"],
-            url=f'https://x.com/{username}',
-            username=username,
-            displayname=displayname,
+            url=f'https://x.com/{obj["screen_name"]}',
+            username=obj["screen_name"],
+            displayname=obj["name"],
             rawDescription=obj["description"],
-            created=email.utils.parsedate_to_datetime(created_at),
+            created=email.utils.parsedate_to_datetime(obj["created_at"]),
             followersCount=obj["followers_count"],
             friendsCount=obj["friends_count"],
             statusesCount=obj["statuses_count"],

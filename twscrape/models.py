@@ -234,7 +234,6 @@ class Tweet(JSONTrait):
             bookmarkedCount=get_or(obj, "bookmark_count", 0),
             conversationId=int(obj["conversation_id_str"]),
             bookmarkCount=int(obj["bookmark_count"]),
-            possibly_sensitive=obj.get("possibly_sensitive"),
             conversationIdStr=obj["conversation_id_str"],
             hashtags=[x["text"] for x in get_or(obj, "entities.hashtags", [])],
             cashtags=[x["text"] for x in get_or(obj, "entities.symbols", [])],

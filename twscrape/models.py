@@ -138,6 +138,9 @@ class User(JSONTrait):
         username = obj.get("screen_name") or core_obj.get("screen_name")
         created_at = obj.get("created_at") or core_obj.get("created_at")
         displayname = obj.get("name") or core_obj.get("name")
+
+        avatar_obj = obj.get("avatar", obj)
+        profile_image_url_https = obj.get("profile_image_url_https") or avatar_obj.get("image_url")
         return User(
             id=int(obj["id_str"]),
             id_str=obj["id_str"],
@@ -154,7 +157,7 @@ class User(JSONTrait):
             mediaCount=obj["media_count"],
             location=obj["location"],
             pinnedTweetIds=obj["pinned_tweet_ids_str"],
-            profileImageUrl=obj["profile_image_url_https"],
+            profileImageUrl=profile_image_url_https,
             profileBannerUrl=obj.get("profile_banner_url"),
             verified=obj.get("verified"),
             blue=obj.get("is_blue_verified"),

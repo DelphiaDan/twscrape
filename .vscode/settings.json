@@ -4,6 +4,13 @@
     "editor.codeActionsOnSave": ["source.organizeImports"],
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[markdown]": {
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 99
+  },  
   "files.exclude": {
     ".ruff_cache": true,
     ".pytest_cache": true,
@@ -11,4 +18,7 @@
     "htmlcov": true,
     "dist": true
   },
+  "files.associations": {
+    "Dockerfile.*": "dockerfile"
+  }
 }

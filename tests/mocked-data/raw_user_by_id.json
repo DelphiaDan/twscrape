@@ -23,6 +23,7 @@
         "is_blue_verified": true,
         "profile_image_shape": "Square",
         "legacy": {
+          "following": false,
           "can_dm": true,
           "can_media_tag": true,
           "created_at": "Sat Dec 14 04:35:55 +0000 2013",
@@ -36,9 +37,9 @@
             "url": {
               "urls": [
                 {
-                  "display_url": "developer.x.com",
-                  "expanded_url": "https://developer.x.com/",
-                  "url": "https://t.co/O13IfbuPqq",
+                  "display_url": "docs.x.com",
+                  "expanded_url": "https://docs.x.com/",
+                  "url": "https://t.co/NIwHVIVyrN",
                   "indices": [
                     0,
                     23
@@ -48,27 +49,27 @@
             }
           },
           "fast_followers_count": 0,
-          "favourites_count": 2148,
-          "followers_count": 646174,
-          "friends_count": 1777,
+          "favourites_count": 2167,
+          "followers_count": 700242,
+          "friends_count": 746,
           "has_custom_timelines": true,
           "is_translator": false,
-          "listed_count": 2684,
+          "listed_count": 2682,
           "location": "127.0.0.1",
-          "media_count": 820,
+          "media_count": 821,
           "name": "Developers",
-          "normal_followers_count": 646174,
+          "normal_followers_count": 700242,
           "pinned_tweet_ids_str": [
-            "1770153912013615285"
+            "1851463451929186504"
           ],
           "possibly_sensitive": false,
           "profile_banner_url": "https://pbs.twimg.com/profile_banners/2244994945/1690213128",
           "profile_image_url_https": "https://pbs.twimg.com/profile_images/1683501992314798080/xl1POYLw_normal.jpg",
           "profile_interstitial_type": "",
           "screen_name": "XDevelopers",
-          "statuses_count": 4089,
+          "statuses_count": 4079,
           "translator_type": "regular",
-          "url": "https://t.co/O13IfbuPqq",
+          "url": "https://t.co/NIwHVIVyrN",
           "verified": false,
           "verified_type": "Business",
           "want_retweets": false,
@@ -86,12 +87,10 @@
           ]
         },
         "tipjar_settings": {},
-        "smart_blocked_by": false,
-        "smart_blocking": false,
         "business_account": {},
         "highlights_info": {
           "can_highlight_tweets": true,
-          "highlighted_tweets": "1"
+          "highlighted_tweets": "2"
         },
         "creator_subscriptions_count": 0,
         "has_hidden_subscriptions_on_profile": false
